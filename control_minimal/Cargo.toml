@@ -1,0 +1,6 @@
+[package]
+name = "control_minimal"
+authors = ["neidr4"]
+version = "0.0.1"
+
+[dependencies]
