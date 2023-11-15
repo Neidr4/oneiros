@@ -1,3 +1,14 @@
+use std::thread;
+use std::time::Duration;
+
+use rppal::gpio::{Gpio, OutputPin};
+use rppal::pwm::{Channel, Pwm};
+
+// TODO: Add a function start sending in a thread
+// static PWM0 = Pwm::new(Channel::Pwm0)?;
+// static PWM1 = Pwm::new(Channel::Pwm1)?;
+const PWM_FREQ_MIN: u32 = 400;
+
 pub fn setup_io() {
     // Setup the io
     // Setup the motor parameters steps and ticks
@@ -13,15 +24,25 @@ fn is_setup_io() -> bool {
     return result
 }
 
-fn convert_to_pwm(motor_speeds: (f32, f32, f32)) {
+fn convert_to_pwm(motor_speeds: &(f32, f32, f32)) {
     println!("Converting to PWM");
+    println!("{:?}", motor_speeds);
+    loop {
+        println!("{:?}", motor_speeds);
+    }
 }
 
-pub fn send_to_io(motor_pwms: (f32, f32, f32)) {
+pub fn start_sending_to_io(motor_pwms: &(f32, f32, f32)) {
+
+    // let mut led = Gpio::new()?.get(23)?.into_output();
     if is_setup_io() != true {
         println!("I/O have not been setup\n Please setup I/O before converting.");
         return
     }
-    convert_to_pwm(motor_pwms);
-    println!("Sending to IO");
+    let handle = thread::spawn(move || {
+        println!("Sending to IO");
+        convert_to_pwm(motor_pwms);
+        thread::sleep(Duration::from_millis(1));
+    });
+    handle.join().unwrap();
 }
