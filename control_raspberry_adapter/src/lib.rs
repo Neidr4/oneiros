@@ -1,4 +1,5 @@
 use std::thread;
+use std::error::Error;
 use std::time::Duration;
 
 use rppal::gpio::{Gpio, OutputPin};
@@ -24,25 +25,27 @@ fn is_setup_io() -> bool {
     return result
 }
 
-fn convert_to_pwm(motor_speeds: &(f32, f32, f32)) {
+fn convert_to_pwm(motor_speeds: &[f32; 3]) {
     println!("Converting to PWM");
     println!("{:?}", motor_speeds);
     loop {
         println!("{:?}", motor_speeds);
+        thread::sleep(Duration::from_millis(1));
     }
 }
 
-pub fn start_sending_to_io(motor_pwms: &(f32, f32, f32)) {
+pub fn start_sending_to_io(motor_pwms: &'static [f32; 3]) -> Result<(), Box<dyn Error>> {
 
-    // let mut led = Gpio::new()?.get(23)?.into_output();
+    let mut led = Gpio::new()?.get(23)?.into_output();
     if is_setup_io() != true {
         println!("I/O have not been setup\n Please setup I/O before converting.");
-        return
+        return Ok(());
     }
     let handle = thread::spawn(move || {
         println!("Sending to IO");
-        convert_to_pwm(motor_pwms);
-        thread::sleep(Duration::from_millis(1));
+        convert_to_pwm(&motor_pwms);
     });
     handle.join().unwrap();
+
+    return Ok(());
 }

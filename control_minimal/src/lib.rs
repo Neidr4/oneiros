@@ -60,7 +60,7 @@ fn check_overload(motors_speed: &mut [f32; 3]) {
     }
 }
 
-pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> (f32, f32, f32) {
+pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3] {
     // Converts basic commands to motor ratios.
     // direction: f32; Direction of command relative to the robot in radians.
     // speed_scalar: f32; Scale between 0 (minimal speed) to 1 (maximale speed).
@@ -71,7 +71,7 @@ pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> (f32, f3
     let adjusted_speed_scalar = compute_adjusted_scalar(&motors_speed, speed_scalar);
     compute_direction(&mut motors_speed, direction, adjusted_speed_scalar);
     check_overload(&mut motors_speed);
-    (motors_speed[0], motors_speed[1], motors_speed[2])
+    return [motors_speed[0], motors_speed[1] ,motors_speed[2]]
 }
 
 // TODO: Add a convert for twist method (vector3 linear, vector3 angular)

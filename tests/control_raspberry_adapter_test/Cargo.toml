@@ -1,0 +1,7 @@
+[package]
+name = "control_raspberry_adapter_test"
+version = "0.1.0"
+authors = ["neidr4"]
+
+[dependencies]
+control_raspberry_adapter = {path = "../../control_raspberry_adapter/"}
