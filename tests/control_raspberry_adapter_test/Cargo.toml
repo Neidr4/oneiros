@@ -1,7 +1,9 @@
 [package]
 name = "control_raspberry_adapter_test"
 version = "0.1.0"
+edition = "2021"
 authors = ["neidr4"]
 
 [dependencies]
+rppal = "0.15.0"
 control_raspberry_adapter = {path = "../../control_raspberry_adapter/"}
