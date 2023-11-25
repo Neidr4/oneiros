@@ -1,14 +1,15 @@
 use std::thread;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::error::Error;
 use std::time::Duration;
 
 use rppal::gpio::{Gpio, OutputPin};
-use rppal::pwm::{Channel, Pwm};
+use rppal::pwm::{Channel, Pwm, Polarity};
 
 // TODO: Add a function start sending in a thread
-// static PWM0 = Pwm::new(Channel::Pwm0)?;
-// static PWM1 = Pwm::new(Channel::Pwm1)?;
 const PWM_FREQ_MIN: u32 = 400;
+static EXIT_EVENT: AtomicBool = AtomicBool::new(false);
 
 pub fn setup_io() {
     // Setup the io
@@ -25,27 +26,35 @@ fn is_setup_io() -> bool {
     return result
 }
 
-fn convert_to_pwm(motor_speeds: &[f32; 3]) {
-    println!("Converting to PWM");
-    println!("{:?}", motor_speeds);
+// fn convert_to_pwm(motor_speeds: &[f32; 3]) {
+fn convert_to_pwm(motor_speeds: &[f32; 3]) -> Result<(), Box<dyn Error>> {
+    let pwm_0 = Pwm::with_frequency(Channel::Pwm0, 2.0, 0.25, Polarity::Normal, true)?;
     loop {
-        println!("{:?}", motor_speeds);
+        // pwm_0.set_frequency(8.0, 0.5)?;
+        // println!("{:?}", motor_speeds);
+        if EXIT_EVENT.load(Ordering::Relaxed) {
+            break;
+        }
         thread::sleep(Duration::from_millis(1));
     }
+    return Ok(());
 }
 
 pub fn start_sending_to_io(motor_pwms: &'static [f32; 3]) -> Result<(), Box<dyn Error>> {
-
-    let mut led = Gpio::new()?.get(23)?.into_output();
     if is_setup_io() != true {
         println!("I/O have not been setup\n Please setup I/O before converting.");
         return Ok(());
     }
-    let handle = thread::spawn(move || {
-        println!("Sending to IO");
-        convert_to_pwm(&motor_pwms);
+    thread::spawn(move || {
+        println!("Starting the PWM thread");
+        EXIT_EVENT.store(false, Ordering::Relaxed);
+        let _ = convert_to_pwm(&motor_pwms);
+        println!("Leaving the PWM thread");
     });
-    handle.join().unwrap();
-
     return Ok(());
+}
+
+pub fn stop_sending_to_io() {
+    println!("Stopping sending to IOs");
+    EXIT_EVENT.store(true, Ordering::Relaxed);
 }
