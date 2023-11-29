@@ -1,11 +1,10 @@
 use std::thread;
 use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 use std::error::Error;
 use std::time::Duration;
 
 use rppal::gpio::{Gpio, OutputPin};
-use rppal::pwm::{Channel, Pwm, Polarity};
+use rppal::pwm::{Channel, Pwm};
 
 const PWM_FREQ_MIN: u32 = 1;
 const GPIO_PWM: u8 = 23;
@@ -15,14 +14,8 @@ const GPIO_DIR2: u8 = 26;
 const THREAD_SLEEP: u8 = 100;
 static EXIT_EVENT: AtomicBool = AtomicBool::new(false);
 
-// static RASP_ADAPT: RaspberryAdapter = RaspberryAdapter();
-static RASP_ADAPT: RaspberryAdapter = RaspberryAdapter {
-    exit_event: true,
-    pwm_min_freq: PWM_FREQ_MIN,
-    speed_desired: [0.0; 3],
-};
 
-struct RaspberryAdapter {
+pub struct RaspberryAdapter {
     exit_event: bool,
     pwm_min_freq: u32,
     speed_desired: [f32; 3],
@@ -31,25 +24,33 @@ struct RaspberryAdapter {
 
 impl RaspberryAdapter {
 
-    pub fn start_sending_to_io(&self, motor_pwms: &'static [f32; 3]) -> Result<(), Box<dyn Error>> {
+    pub fn new() -> Self {
+        Self {
+            exit_event: true,
+            pwm_min_freq: 1,
+            speed_desired: [0.0; 3],
+        }
+    }
+
+//
+//https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282/4
+//
+    pub fn start_sending_to_io(&'static self) {
         thread::spawn(move || {
             println!("Starting the PWM thread");
-            EXIT_EVENT.store(false, Ordering::Relaxed);
             let _ = self.run_pwm();
         });
         thread::spawn(move || {
             println!("Starting the DIR thread");
-            EXIT_EVENT.store(false, Ordering::Relaxed);
             let _ = self.run_dir();
         });
-        return Ok(());
     }
 
     // Consider getting this method outside and call to only one object
-    pub fn update_speed_value(&self, motor_pwms: [f32; 3]) {
+    pub fn update_speed_value(&mut self, motor_pwms: [f32; 3]) {
         // TODO: Make sure the threads are started before using this method
         // TODO: Verify that the values are legal
-        self.speed_desired = motor_pwms.clone();
+        self.speed_desired = motor_pwms;
     }
 
     fn run_pwm(&self) -> Result<(), Box<dyn Error>>  {
@@ -69,16 +70,16 @@ impl RaspberryAdapter {
             pwm_2.set_pwm_frequency((self.speed_desired[2] * PWM_FREQ_MIN as f32).into(), 0.5)?;
         }
         println!("Disabling the PWMs");
-        pwm_0.disable();
-        pwm_1.disable();
-        pwm_2.clear_pwm();
+        let _ = pwm_0.disable();
+        let _ = pwm_1.disable();
+        let _ = pwm_2.clear_pwm();
         Ok(())
     }
 
     fn run_dir(&self) -> Result<(), Box<dyn Error>>  {
-        let mut dir_0: OutputPin = Gpio::new()?.get(GPIO_DIR0)?.into_output();
-        let mut dir_1: OutputPin = Gpio::new()?.get(GPIO_DIR1)?.into_output();
-        let mut dir_2: OutputPin = Gpio::new()?.get(GPIO_DIR2)?.into_output();
+        let dir_0: OutputPin = Gpio::new()?.get(GPIO_DIR0)?.into_output();
+        let dir_1: OutputPin = Gpio::new()?.get(GPIO_DIR1)?.into_output();
+        let dir_2: OutputPin = Gpio::new()?.get(GPIO_DIR2)?.into_output();
         let mut list_dir: [OutputPin; 3] = [dir_0, dir_1, dir_2];
         let mut dir_current: [bool; 3] = [true; 3];
         loop {
@@ -101,7 +102,7 @@ impl RaspberryAdapter {
         Ok(())
     }
 
-    pub fn stop_sending_to_io(&self) {
+    pub fn stop_sending_to_io(&mut self) {
         println!("Stopping sending to IOs");
         // self.exit_event.store(true, Ordering::Relaxed);
         self.exit_event = true;

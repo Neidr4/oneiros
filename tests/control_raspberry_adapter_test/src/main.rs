@@ -7,11 +7,16 @@ fn main() {
     // TODO: Not sure that this will work. It needs a reference to be assigned
     // which is not what's planned in the other packages
     // let motor_speeds: 'static+[f32; 3] = [1.0, 0.2, 0.8];
-    let motor_speeds: &'static [f32; 3] = &[1.0, 0.2, 0.8];
-    let _ = control_raspberry_adapter::start_sending_to_io(&motor_speeds);
+    let motor_speeds: [f32; 3] = [1.0, 0.2, 0.8];
+    let mut rasp_controller = control_raspberry_adapter::RaspberryAdapter::new();
+    // rasp_controller.start_sending_to_io();
+    rasp_controller.update_speed_value([1.0; 3]);
     thread::sleep(Duration::from_secs(5));
-    control_raspberry_adapter::stop_sending_to_io();
+    rasp_controller.update_speed_value(motor_speeds);
+    thread::sleep(Duration::from_secs(5));
+    rasp_controller.stop_sending_to_io();
 }
+
 // use std::error::Error;
 // use std::thread;
 // use std::time::Duration;
