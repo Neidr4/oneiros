@@ -9,14 +9,14 @@ use rppal::pwm::{Channel, Pwm, Polarity};
 
 const PWM_FREQ_MIN: u32 = 1;
 const GPIO_PWM: u8 = 23;
+const GPIO_DIR0: u8 = 24;
+const GPIO_DIR1: u8 = 25;
+const GPIO_DIR2: u8 = 26;
 static EXIT_EVENT: AtomicBool = AtomicBool::new(false);
 
 // static RASP_ADAPT: RaspberryAdapter = RaspberryAdapter();
 static RASP_ADAPT: RaspberryAdapter = RaspberryAdapter {
-    exit_event: true,
-    pwm_0: Pwm::new(Channel::Pwm0),
-    pwm_1: Pwm::new(Channel::Pwm1),
-    pwm_2: Gpio::new()?.get(GPIO_PWM)?.into_output(),
+    exit_event: EXIT_EVENT,
     pwm_min_freq: PWM_FREQ_MIN,
     speed_desired: [0.0; 3],
     speed_current: [0.0; 3],
@@ -28,39 +28,38 @@ struct RaspberryAdapter {
     pwm_min_freq: u32,
     dir_pins: [u8; 3],
     gpio_pwm: u8,
-    dir_desired: [f32; 3],
-    dir_current: [f32; 3],
     speed_desired: [f32; 3],
-    speed_current: [f32; 3],
 }
 
 
 impl RaspberryAdapter {
 
-    // TODO: change this to setup
     pub fn start_sending_to_io(&self, motor_pwms: &'static [f32; 3]) -> Result<(), Box<dyn Error>> {
         thread::spawn(move || {
             println!("Starting the PWM thread");
             EXIT_EVENT.store(false, Ordering::Relaxed);
-            let _ = self.run_();
+            let _ = self.run_pwm();
             // println!("Leaving the PWM thread");
         });
+        // TODO: Do the same for dir
         return Ok(());
     }
 
+    // Consider getting this method outside and call to only one object
     pub fn update_speed_value(&self, motor_pwms: [f32; 3]) {
+        // TODO: Make sure the threads are started before using this method
         // TODO: Verify that the values are legal
         // TODO: extract the minus for dir
-        self.speed_desired = self.compute_dir();
+        self.speed_desired = motor_pwms;
     }
 
     fn run_pwm(&self) -> Result<(), Box<dyn Error>>  {
-        // TODO: instanciate the pwms
-        // let pwm_0 = Pwm::with_frequency((self.speed_desired[0] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-        // let pwm_1 = Pwm::with_frequency((self.speed_desired[1] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-        // let mut pwm_2 = Gpio::.into(), 0.5)?;
+        let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
+        let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
+        let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
+        
         loop{
-            // TODO: update the PWM depending on pwm desired
+            // TODO: add a check to see if the values have changed (this can be local)
             pwm_0.set_frequency((self.speed_desired[0] * PWM_FREQ_MIN as f32).into(), 0.5)?;
             pwm_1.set_frequency((self.speed_desired[1] * PWM_FREQ_MIN as f32).into(), 0.5)?;
             pwm_2.set_pwm_frequency((self.speed_desired[2] * PWM_FREQ_MIN as f32).into(), 0.5)?;
@@ -71,6 +70,22 @@ impl RaspberryAdapter {
         pwm_1.disable();
         pwm_2.clear_pwm();
         Ok(())
+    }
+
+    fn run_dir(&self) -> Result<(), Box<dyn Error>>  {
+        let mut dir_0: OutputPin = Gpio::new()?.get(GPIO_DIR0)?.into_output();
+        let mut dir_1: OutputPin = Gpio::new()?.get(GPIO_DIR1)?.into_output();
+        let mut dir_2: OutputPin = Gpio::new()?.get(GPIO_DIR2)?.into_output();
+        let mut dir_current: [bool; 3] = [true; 3];
+        loop {
+            // TODO: add a check to see if the values have changed (this can be local)
+            let mut dir_desired = self.speed_desired.iter().map(|x| x.is_sign_positive()).collect();
+            if dir_current == dir_desired {
+                // TODO: iterate and assing to dir pin
+                dir_0.set_low();
+            }
+        }
+
     }
 
     pub fn stop_sending_to_io(&self) {
