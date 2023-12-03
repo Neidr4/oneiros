@@ -16,17 +16,9 @@ const GPIO_DIR1: u8 = 25;
 const GPIO_DIR2: u8 = 26;
 const THREAD_SLEEP: u8 = 10;
 static EXIT_EVENT: AtomicBool = AtomicBool::new(false);
-// static MOTOR_SPEEDS: &'static mut [f32; 3] = &mut [0.0; 3];
-// static MOTOR_SPEEDS: &mut [f32; 3] = &mut [0.0; 3];
-// static motor_speedss: Arc<Mutex<[f32; 3]>> = Arc::new(Mutex::new([0.0; 3]));
 
 static RASPBERRY_ADAPTER: OnceCell<RaspberryAdapter> = OnceCell::new();
-// static RASPBERRY_ADAPTER: OnceCell<RaspberryAdapter> = OnceCell::with_value(RaspberryAdapter::new());
-// static RASPBERRY_ADAPTER: RaspberryAdapter = RaspberryAdapter::new();
 
-//
-//https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282/4
-//
 struct RaspberryAdapter {
     motor_speeds: Arc<Mutex<[f32; 3]>>,
 }
@@ -39,7 +31,7 @@ impl RaspberryAdapter {
     }
 }
 
-pub fn start_sending_to_io3() -> Result<(), Box<dyn Error>> {
+pub fn start_sending_to_io() -> Result<(), Box<dyn Error>> {
     thread::spawn(move || {
         println!("Starting the PWM thread");
         let _ = run_pwm();
@@ -56,15 +48,11 @@ pub fn start_sending_to_io3() -> Result<(), Box<dyn Error>> {
 pub fn update_speed_value(motor_pwms: [f32; 3]) {
     // TODO: Make sure the threads are started before using this method
     // TODO: Verify that the values are legal
-    // RASPBERRY_ADAPTER.motor_speeds.clone_from(motor_pwms);
-    // RASPBERRY_ADAPTER.get();
-    // RASPBERRY_ADAPTER.get().motor_speeds.lock().unwrap().clone_from(&motor_pwms);
     RASPBERRY_ADAPTER.get_or_init(|| RaspberryAdapter::new());
     match RASPBERRY_ADAPTER.get() {
         Some(x) => x.motor_speeds.lock().unwrap().clone_from(&motor_pwms),
         None => println!("Please start sending IOs first"),
     }
-    // *MOTOR_SPEEDS = motor_pwms;
 }
 
     // fn run_dir(&self) -> Result<(), Box<dyn Error>>  {
@@ -98,31 +86,6 @@ pub fn stop_sending_to_io() {
     EXIT_EVENT.store(true, Ordering::Relaxed);
     thread::sleep(Duration::from_secs(1));
 }
-
-// fn run_pwm() -> Result<(), Box<dyn Error>>  {
-//     let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
-//     let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
-//     let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
-//     let mut speed_previous: [f32; 3] = [0.0; 3];
-//     let _ = pwm_0.enable();
-//     let _ = pwm_1.enable();
-//     loop{
-//         // Checking if anything has changed
-//         if EXIT_EVENT.load(Ordering::Relaxed) == true {break;}
-//         thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
-//         if *MOTOR_SPEEDS == speed_previous { continue; }
-//         speed_previous = MOTOR_SPEEDS.clone();
-//         // Setting the frequency
-//         pwm_0.set_frequency((MOTOR_SPEEDS[0] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-//         pwm_1.set_frequency((MOTOR_SPEEDS[1] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-//         pwm_2.set_pwm_frequency((MOTOR_SPEEDS[2] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-//     }
-//     println!("Disabling the PWMs");
-//     let _ = pwm_0.disable();
-//     let _ = pwm_1.disable();
-//     let _ = pwm_2.clear_pwm();
-//     Ok(())
-// }
 
 fn run_pwm() -> Result<(), Box<dyn Error>>  {
     let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
