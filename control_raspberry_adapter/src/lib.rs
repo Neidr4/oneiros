@@ -1,111 +1,157 @@
 use std::thread;
+use std::sync::{Mutex, Arc};
 use std::sync::atomic::AtomicBool;
 use std::error::Error;
 use std::time::Duration;
+use std::sync::atomic::Ordering;
+use once_cell::sync::OnceCell;
 
 use rppal::gpio::{Gpio, OutputPin};
 use rppal::pwm::{Channel, Pwm};
 
-const PWM_FREQ_MIN: u32 = 1;
+const PWM_FREQ_MIN: u32 = 41;
 const GPIO_PWM: u8 = 23;
 const GPIO_DIR0: u8 = 24;
 const GPIO_DIR1: u8 = 25;
 const GPIO_DIR2: u8 = 26;
-const THREAD_SLEEP: u8 = 100;
+const THREAD_SLEEP: u8 = 10;
 static EXIT_EVENT: AtomicBool = AtomicBool::new(false);
+// static MOTOR_SPEEDS: &'static mut [f32; 3] = &mut [0.0; 3];
+// static MOTOR_SPEEDS: &mut [f32; 3] = &mut [0.0; 3];
+// static motor_speedss: Arc<Mutex<[f32; 3]>> = Arc::new(Mutex::new([0.0; 3]));
 
-
-pub struct RaspberryAdapter {
-    exit_event: bool,
-    pwm_min_freq: u32,
-    speed_desired: [f32; 3],
-}
-
-
-impl RaspberryAdapter {
-
-    pub fn new() -> Self {
-        Self {
-            exit_event: true,
-            pwm_min_freq: 1,
-            speed_desired: [0.0; 3],
-        }
-    }
+static RASPBERRY_ADAPTER: OnceCell<RaspberryAdapter> = OnceCell::new();
+// static RASPBERRY_ADAPTER: OnceCell<RaspberryAdapter> = OnceCell::with_value(RaspberryAdapter::new());
+// static RASPBERRY_ADAPTER: RaspberryAdapter = RaspberryAdapter::new();
 
 //
 //https://users.rust-lang.org/t/how-to-use-self-while-spawning-a-thread-from-method/8282/4
 //
-    pub fn start_sending_to_io(&'static self) {
-        thread::spawn(move || {
-            println!("Starting the PWM thread");
-            let _ = self.run_pwm();
-        });
-        thread::spawn(move || {
-            println!("Starting the DIR thread");
-            let _ = self.run_dir();
-        });
-    }
+struct RaspberryAdapter {
+    motor_speeds: Arc<Mutex<[f32; 3]>>,
+}
 
-    // Consider getting this method outside and call to only one object
-    pub fn update_speed_value(&mut self, motor_pwms: [f32; 3]) {
-        // TODO: Make sure the threads are started before using this method
-        // TODO: Verify that the values are legal
-        self.speed_desired = motor_pwms;
-    }
-
-    fn run_pwm(&self) -> Result<(), Box<dyn Error>>  {
-        let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
-        let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
-        let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
-        let mut speed_previous: [f32; 3] = [0.0; 3];
-        loop{
-            // Checking if anything has changed
-            if self.exit_event == false {break;}
-            thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
-            if self.speed_desired == speed_previous { continue; }
-            speed_previous = self.speed_desired.clone();
-            // Setting the frequency
-            pwm_0.set_frequency((self.speed_desired[0] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-            pwm_1.set_frequency((self.speed_desired[1] * PWM_FREQ_MIN as f32).into(), 0.5)?;
-            pwm_2.set_pwm_frequency((self.speed_desired[2] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+impl RaspberryAdapter {
+    pub fn new() -> Self {
+        Self {
+            motor_speeds: Arc::new(Mutex::new([0.0; 3])),
         }
-        println!("Disabling the PWMs");
-        let _ = pwm_0.disable();
-        let _ = pwm_1.disable();
-        let _ = pwm_2.clear_pwm();
-        Ok(())
-    }
-
-    fn run_dir(&self) -> Result<(), Box<dyn Error>>  {
-        let dir_0: OutputPin = Gpio::new()?.get(GPIO_DIR0)?.into_output();
-        let dir_1: OutputPin = Gpio::new()?.get(GPIO_DIR1)?.into_output();
-        let dir_2: OutputPin = Gpio::new()?.get(GPIO_DIR2)?.into_output();
-        let mut list_dir: [OutputPin; 3] = [dir_0, dir_1, dir_2];
-        let mut dir_current: [bool; 3] = [true; 3];
-        loop {
-            if self.exit_event == false {break;}
-            for (index, &motor_speed) in self.speed_desired.iter().enumerate() {
-                // Checking if anything has changed
-                let state = motor_speed.is_sign_positive();
-                if state == dir_current[index] {continue};
-                dir_current[index] = !dir_current[index];
-                // Setting the direction pin
-                if state {
-                    list_dir[index].set_high();
-                } else {
-                    list_dir[index].set_low();
-                }
-            }
-            thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
-        }
-        println!("Quitting the DIR thread");
-        Ok(())
-    }
-
-    pub fn stop_sending_to_io(&mut self) {
-        println!("Stopping sending to IOs");
-        // self.exit_event.store(true, Ordering::Relaxed);
-        self.exit_event = true;
     }
 }
 
+pub fn start_sending_to_io3() -> Result<(), Box<dyn Error>> {
+    thread::spawn(move || {
+        println!("Starting the PWM thread");
+        let _ = run_pwm();
+        println!("Stopping the PWM thread");
+    });
+    // thread::spawn(move || {
+    //     println!("Starting the DIR thread");
+    //     let _ = self.run_dir();
+    // });
+    Ok(())
+}
+
+// Consider getting this method outside and call to only one object
+pub fn update_speed_value(motor_pwms: [f32; 3]) {
+    // TODO: Make sure the threads are started before using this method
+    // TODO: Verify that the values are legal
+    // RASPBERRY_ADAPTER.motor_speeds.clone_from(motor_pwms);
+    // RASPBERRY_ADAPTER.get();
+    // RASPBERRY_ADAPTER.get().motor_speeds.lock().unwrap().clone_from(&motor_pwms);
+    RASPBERRY_ADAPTER.get_or_init(|| RaspberryAdapter::new());
+    match RASPBERRY_ADAPTER.get() {
+        Some(x) => x.motor_speeds.lock().unwrap().clone_from(&motor_pwms),
+        None => println!("Please start sending IOs first"),
+    }
+    // *MOTOR_SPEEDS = motor_pwms;
+}
+
+    // fn run_dir(&self) -> Result<(), Box<dyn Error>>  {
+    //     let dir_0: OutputPin = Gpio::new()?.get(GPIO_DIR0)?.into_output();
+    //     let dir_1: OutputPin = Gpio::new()?.get(GPIO_DIR1)?.into_output();
+    //     let dir_2: OutputPin = Gpio::new()?.get(GPIO_DIR2)?.into_output();
+    //     let mut list_dir: [OutputPin; 3] = [dir_0, dir_1, dir_2];
+    //     let mut dir_current: [bool; 3] = [true; 3];
+    //     loop {
+    //         if self.exit_event == false {break;}
+    //         for (index, &motor_speed) in self.speed_desired.iter().enumerate() {
+    //             // Checking if anything has changed
+    //             let state = motor_speed.is_sign_positive();
+    //             if state == dir_current[index] {continue};
+    //             dir_current[index] = !dir_current[index];
+    //             // Setting the direction pin
+    //             if state {
+    //                 list_dir[index].set_high();
+    //             } else {
+    //                 list_dir[index].set_low();
+    //             }
+    //         }
+    //         thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
+    //     }
+    //     println!("Quitting the DIR thread");
+    //     Ok(())
+    // }
+
+pub fn stop_sending_to_io() {
+    println!("Stopping sending to IOs");
+    EXIT_EVENT.store(true, Ordering::Relaxed);
+    thread::sleep(Duration::from_secs(1));
+}
+
+// fn run_pwm() -> Result<(), Box<dyn Error>>  {
+//     let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
+//     let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
+//     let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
+//     let mut speed_previous: [f32; 3] = [0.0; 3];
+//     let _ = pwm_0.enable();
+//     let _ = pwm_1.enable();
+//     loop{
+//         // Checking if anything has changed
+//         if EXIT_EVENT.load(Ordering::Relaxed) == true {break;}
+//         thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
+//         if *MOTOR_SPEEDS == speed_previous { continue; }
+//         speed_previous = MOTOR_SPEEDS.clone();
+//         // Setting the frequency
+//         pwm_0.set_frequency((MOTOR_SPEEDS[0] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+//         pwm_1.set_frequency((MOTOR_SPEEDS[1] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+//         pwm_2.set_pwm_frequency((MOTOR_SPEEDS[2] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+//     }
+//     println!("Disabling the PWMs");
+//     let _ = pwm_0.disable();
+//     let _ = pwm_1.disable();
+//     let _ = pwm_2.clear_pwm();
+//     Ok(())
+// }
+
+fn run_pwm() -> Result<(), Box<dyn Error>>  {
+    let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
+    let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
+    let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
+    let mut speed_previous: [f32; 3] = [0.0; 3];
+    let _ = pwm_0.enable();
+    let _ = pwm_1.enable();
+    loop{
+        // Checking if anything has changed
+        if EXIT_EVENT.load(Ordering::Relaxed) == true {break;}
+        thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
+        // let motor_speeds: [f32; 3] = RASPBERRY_ADAPTER.motor_speeds.lock().unwrap().clone();
+        let mut motor_speeds: [f32; 3] = [0.0; 3];
+        match RASPBERRY_ADAPTER.get() {
+            // Some(x) => println!("There something here"),
+            Some(x) => x.motor_speeds.lock().unwrap().clone_into(&mut motor_speeds),
+            None => println!("Please start sending IOs first"),
+        }
+        if motor_speeds == speed_previous { continue; }
+        speed_previous = motor_speeds.clone();
+        // Setting the frequency
+        pwm_0.set_frequency((motor_speeds[0] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+        pwm_1.set_frequency((motor_speeds[1] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+        pwm_2.set_pwm_frequency((motor_speeds[2] * PWM_FREQ_MIN as f32).into(), 0.5)?;
+    }
+    println!("Disabling the PWMs");
+    let _ = pwm_0.disable();
+    let _ = pwm_1.disable();
+    let _ = pwm_2.clear_pwm();
+    Ok(())
+}

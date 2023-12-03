@@ -7,14 +7,27 @@ fn main() {
     // TODO: Not sure that this will work. It needs a reference to be assigned
     // which is not what's planned in the other packages
     // let motor_speeds: 'static+[f32; 3] = [1.0, 0.2, 0.8];
-    let motor_speeds: [f32; 3] = [1.0, 0.2, 0.8];
-    let mut rasp_controller = control_raspberry_adapter::RaspberryAdapter::new();
-    // rasp_controller.start_sending_to_io();
-    rasp_controller.update_speed_value([1.0; 3]);
+    // let motor_speeds: [f32; 3] = [1.0, 0.2, 0.8];
+    // println!("About to create!");
+    // let mut rasp_controller = control_raspberry_adapter::RaspberryAdapter::new();
+    // println!("About to start!");
+    // let _ = rasp_controller.start_sending_to_io2();
+    // println!("About to update!");
+    // rasp_controller.update_speed_value([1.0; 3]);
+    // thread::sleep(Duration::from_secs(5));
+    // rasp_controller.update_speed_value(motor_speeds);
+    // thread::sleep(Duration::from_secs(5));
+    // rasp_controller.stop_sending_to_io();
+    println!("About to start!");
+    let _ = control_raspberry_adapter::start_sending_to_io3();
+    println!("About to update!");
+    control_raspberry_adapter::update_speed_value([0.2; 3]);
     thread::sleep(Duration::from_secs(5));
-    rasp_controller.update_speed_value(motor_speeds);
+    println!("About to update!");
+    let motor_speeds: [f32; 3] = [1.0; 3];
+    control_raspberry_adapter::update_speed_value(motor_speeds);
     thread::sleep(Duration::from_secs(5));
-    rasp_controller.stop_sending_to_io();
+    control_raspberry_adapter::stop_sending_to_io();
 }
 
 // use std::error::Error;
