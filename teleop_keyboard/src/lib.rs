@@ -1,8 +1,10 @@
+use std::thread;
 use std::{io, thread::sleep, time::Duration};
 use inputbot::KeybdKey::*;
-use inputbot::MouseButton::*;
 
 pub fn usage() {
+    println!(" ------------------------- ");
+    println!(" Call starting_teleop before doing anything");
     println!(" ------------------------- ");
     println!("Directions are \n
              Q W E\n
@@ -19,32 +21,16 @@ fn callback(key: String) {
     println!("{} key has been pressed", key);
 }
 
-// TODO: Add a capture of the inputs
-pub fn teleoperate() {
+fn teleoperate() {
     usage();
-    // TODO: Add loop
-    // TODO: Add timeout
-    // TODO: Think of the way to take input of the constantly maintain key
-    // let mut input = String::new();
-    //
-    // match io::stdin().read_line(&mut input) {
-    //     Ok(n) => {
-    //         // println!("{input}");
-    //         match input.trim() {
-    //             "z" => println!("z"),
-    //             _ => println!("invalid"),
-    //         }
-    //     }
-    //     Err(error) => println!("error: {error}"),
-    // }
-    //
 
     let mut command: [f32; 3] = [0.0; 3];
     let mut command2 = vec![1.0, 2.0, 3.0];
     command[0] = 1.0;
 
+    // TODO: Change the prints into an actual writing inside a vector
     WKey.bind(move || {
-        println!("Z key has been pressed");
+        println!("W key has been pressed");
         sleep(Duration::from_millis(100));
     });
 
@@ -59,7 +45,7 @@ pub fn teleoperate() {
     });
 
     SKey.bind(move || {
-        println!("A key has been pressed");
+        println!("S key has been pressed");
         sleep(Duration::from_millis(100));
     });
 
@@ -69,4 +55,13 @@ pub fn teleoperate() {
     });
 
     inputbot::handle_input_events();
+    // Blocking function. Nothing will work after
+}
+
+pub fn start_teleoperation() {
+    thread::spawn(move || {
+        println!("Starting the teleoperation keyboard thread");
+        teleoperate();
+        println!("Stopping the teleoperation keyboard thread");
+    });
 }
