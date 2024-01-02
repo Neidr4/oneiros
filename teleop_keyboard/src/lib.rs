@@ -1,6 +1,10 @@
+use std::f32::consts::PI;
+use std::sync::OnceLock;
 use std::thread;
 use std::{io, thread::sleep, time::Duration};
 use inputbot::KeybdKey::*;
+
+static COMMAND: OnceLock<[f32; 3]> = OnceLock::new();
 
 pub fn usage() {
     println!(" ------------------------- ");
@@ -24,18 +28,20 @@ fn callback(key: String) {
 fn teleoperate() {
     usage();
 
-    let mut command: [f32; 3] = [0.0; 3];
-    let mut command2 = vec![1.0, 2.0, 3.0];
-    command[0] = 1.0;
-
-    // TODO: Change the prints into an actual writing inside a vector
+    // TODO: Add the correct values in in functions
+    // TODO: Add the ongoing speed
+    // TODO: Add SPACE for stop
+    // TODO: Add ESC for stop
+    // TODO: Set the sleep duration as a constant
     WKey.bind(move || {
         println!("W key has been pressed");
+        let _ = COMMAND.set([PI/2.0, 0.0, 0.0]);
         sleep(Duration::from_millis(100));
     });
 
     QKey.bind(move || {
         callback("Q".to_string());
+        let _ = COMMAND.set([1.0, 0.0, 0.0]);
         sleep(Duration::from_millis(100));
     });
 
@@ -64,4 +70,15 @@ pub fn start_teleoperation() {
         teleoperate();
         println!("Stopping the teleoperation keyboard thread");
     });
+}
+
+// TODO: create a stop function
+
+// Get the user input in the form: [dir, speed_scalar, angle_scalar]
+pub fn get_user_input() -> [f32; 3] {
+    // TODO: Should it return NONE when not init? Force the user to take care of it ?
+    match COMMAND.clone().into_inner() {
+        Some(x) => return x,
+        None => return [0.0, 0.0, 0.0]
+    }
 }
