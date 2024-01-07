@@ -12,6 +12,14 @@ struct Command {
     command_wrapper: Arc<Mutex<[f32; 3]>>,
 }
 
+impl Command {
+    pub fn new() -> Self {
+        Self {
+            command_wrapper: Arc::new(Mutex::new([0.0; 3])),
+        }
+    }
+}
+
 // TODO: Add impl for new
 
 pub fn usage() {
@@ -112,6 +120,7 @@ fn teleoperate() {
 
 pub fn start_teleoperation() {
     //  TODO: Add init of OnceCell here
+    COMMAND_WRAPPER.get_or_init(|| Command::new() );
     thread::spawn(move || {
         println!("Starting the teleoperation keyboard thread");
         teleoperate();
@@ -129,7 +138,6 @@ pub fn get_user_input() -> [f32; 3] {
         Some(x) => result = x.command_wrapper.lock().unwrap().clone(),
         None => result = [0.0, 0.0, 0.0]
     }
-    println!{
     // let _ = COMMAND.set([0.0, 0.0, 0.0]);
     return result
 }
