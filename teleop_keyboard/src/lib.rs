@@ -1,3 +1,4 @@
+use std::ops::AddAssign;
 use std::sync::{Mutex, Arc};
 use once_cell::sync::OnceCell;
 use std::f32::consts::PI;
@@ -10,12 +11,18 @@ const SLEEP: u8 = 1;
 
 struct Command {
     command_wrapper: Arc<Mutex<[f32; 3]>>,
+    direction: Arc<Mutex<f32>>,
+    speed_scalar: Arc<Mutex<f32>>,
+    angle_scalar: Arc<Mutex<f32>>
 }
 
 impl Command {
     pub fn new() -> Self {
         Self {
             command_wrapper: Arc::new(Mutex::new([0.0; 3])),
+            direction: Arc::new(Mutex::new(0.0)),
+            speed_scalar: Arc::new(Mutex::new(0.0)),
+            angle_scalar: Arc::new(Mutex::new(0.0))
         }
     }
 }
@@ -44,14 +51,11 @@ fn callback(key: String) {
 fn teleoperate() {
     usage();
 
-    // TODO: Add the correct values in in functions
-    // TODO: Add the ongoing speed
     // TODO: Add SPACE for stop
     // TODO: Add ESC for stop
-    // TODO: Set the sleep duration as a constant
     QKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[(3.0*PI/4.0), 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&(3.0*PI/4.0)),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -60,7 +64,7 @@ fn teleoperate() {
     WKey.bind(move || {
         println!("W key has been pressed");
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[PI/2.0, 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&(PI/2.0)),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -68,7 +72,7 @@ fn teleoperate() {
 
     EKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[(3.0*PI/4.0), 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&(PI/4.0)),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -76,7 +80,7 @@ fn teleoperate() {
 
     AKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[PI, 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&PI),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -84,7 +88,7 @@ fn teleoperate() {
 
     DKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[0.0, 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&0.0),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -92,7 +96,7 @@ fn teleoperate() {
 
     ZKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[(5.0*PI/4.0), 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&(5.0*PI/4.0)),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -100,7 +104,7 @@ fn teleoperate() {
 
     XKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[(3.0*PI/2.0), 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&(3.0*PI/2.0)),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -108,7 +112,39 @@ fn teleoperate() {
 
     CKey.bind(move || {
         match COMMAND_WRAPPER.get() {
-            Some(x) => x.command_wrapper.lock().unwrap().clone_from(&[(7.0*PI/4.0), 0.0, 0.0]),
+            Some(x) => x.direction.lock().unwrap().clone_from(&(7.0*PI/4.0)),
+            None => println!("The wrapper is not initialized"),
+        }
+        sleep(Duration::from_millis(SLEEP.into()));
+    });
+
+    JKey.bind(move || {
+        match COMMAND_WRAPPER.get() {
+            Some(x) => x.angle_scalar.lock().unwrap().add_assign(-0.1),
+            None => println!("The wrapper is not initialized"),
+        }
+        sleep(Duration::from_millis(SLEEP.into()));
+    });
+
+    KKey.bind(move || {
+        match COMMAND_WRAPPER.get() {
+            Some(x) => x.angle_scalar.lock().unwrap().add_assign(0.1),
+            None => println!("The wrapper is not initialized"),
+        }
+        sleep(Duration::from_millis(SLEEP.into()));
+    });
+
+    MKey.bind(move || {
+        match COMMAND_WRAPPER.get() {
+            Some(x) => x.speed_scalar.lock().unwrap().add_assign(-0.1),
+            None => println!("The wrapper is not initialized"),
+        }
+        sleep(Duration::from_millis(SLEEP.into()));
+    });
+
+    IKey.bind(move || {
+        match COMMAND_WRAPPER.get() {
+            Some(x) => x.speed_scalar.lock().unwrap().add_assign(0.1),
             None => println!("The wrapper is not initialized"),
         }
         sleep(Duration::from_millis(SLEEP.into()));
@@ -133,11 +169,13 @@ pub fn start_teleoperation() {
 // Get the user input in the form: [dir, speed_scalar, angle_scalar]
 pub fn get_user_input() -> [f32; 3] {
     // TODO: Should it return NONE when not init? Force the user to take care of it ?
-    let mut result: [f32; 3] = [0.0; 3];
+    let result: [f32; 3];
     match COMMAND_WRAPPER.get() {
-        Some(x) => result = x.command_wrapper.lock().unwrap().clone(),
+        Some(x) => result = [x.direction.lock().unwrap().clone(),
+                             x.speed_scalar.lock().unwrap().clone(),
+                             x.angle_scalar.lock().unwrap().clone()
+                             ],
         None => result = [0.0, 0.0, 0.0]
     }
-    // let _ = COMMAND.set([0.0, 0.0, 0.0]);
     return result
 }
