@@ -3,14 +3,13 @@ use std::sync::{Mutex, Arc};
 use once_cell::sync::OnceCell;
 use std::f32::consts::PI;
 use std::thread;
-use std::{io, thread::sleep, time::Duration};
+use std::{thread::sleep, time::Duration};
 use inputbot::KeybdKey::*;
 
 static COMMAND_WRAPPER: OnceCell<Command> = OnceCell::new();
 const SLEEP: u8 = 1;
 
 struct Command {
-    command_wrapper: Arc<Mutex<[f32; 3]>>,
     direction: Arc<Mutex<f32>>,
     speed_scalar: Arc<Mutex<f32>>,
     angle_scalar: Arc<Mutex<f32>>
@@ -19,15 +18,12 @@ struct Command {
 impl Command {
     pub fn new() -> Self {
         Self {
-            command_wrapper: Arc::new(Mutex::new([0.0; 3])),
             direction: Arc::new(Mutex::new(0.0)),
             speed_scalar: Arc::new(Mutex::new(0.0)),
             angle_scalar: Arc::new(Mutex::new(0.0))
         }
     }
 }
-
-// TODO: Add impl for new
 
 pub fn usage() {
     println!(" ------------------------- ");
@@ -44,15 +40,9 @@ println!("Rotations are \n
     println!(" ------------------------- ");
 }
 
-fn callback(key: String) {
-    println!("{} key has been pressed", key);
-}
-
 fn teleoperate() {
     usage();
 
-    // TODO: Add SPACE for stop
-    // TODO: Add ESC for stop
     QKey.bind(move || {
         match COMMAND_WRAPPER.get() {
             Some(x) => x.direction.lock().unwrap().clone_from(&(3.0*PI/4.0)),
@@ -150,12 +140,33 @@ fn teleoperate() {
         sleep(Duration::from_millis(SLEEP.into()));
     });
 
+    SpaceKey.bind(move || {
+        match COMMAND_WRAPPER.get() {
+            Some(x) => {
+                x.direction.lock().unwrap().clone_from(&0.0);
+                x.speed_scalar.lock().unwrap().clone_from(&0.0);
+                x.angle_scalar.lock().unwrap().clone_from(&0.0);
+            }
+            None => println!("The wrapper is not initialized"),
+        }
+    });
+
+    EscapeKey.bind(move || {
+        match COMMAND_WRAPPER.get() {
+            Some(x) => {
+                x.direction.lock().unwrap().clone_from(&0.0);
+                x.speed_scalar.lock().unwrap().clone_from(&0.0);
+                x.angle_scalar.lock().unwrap().clone_from(&0.0);
+            }
+            None => println!("The wrapper is not initialized"),
+        }
+    });
+
     inputbot::handle_input_events();
     // Blocking function. Nothing will work after
 }
 
 pub fn start_teleoperation() {
-    //  TODO: Add init of OnceCell here
     COMMAND_WRAPPER.get_or_init(|| Command::new() );
     thread::spawn(move || {
         println!("Starting the teleoperation keyboard thread");
