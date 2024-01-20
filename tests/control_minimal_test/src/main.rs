@@ -10,5 +10,6 @@ fn main() {
     // println!("variable_1: {:?}", variable_1);
 
     let variable_2: (f32, f32, f32) = control_minimal::convert(PI/2.0, 0.9, 0.0);
+    // control_minimal::convert(direction, speed_scalar, angle_scalar)
     println!("variable_2: {:?}", variable_2);
 }
