@@ -1,0 +1,13 @@
+[package]
+name = "oneiros"
+version = "0.1.0"
+edition = "2021"
+authors = ["neidr4"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ctrlc = "3.4.2"
+control_raspberry_adapter = {path = "../control_raspberry_adapter/"}
+control_minimal = {path = "../control_minimal/"}
+teleop_keyboard = {path = "../teleop_keyboard/"}
