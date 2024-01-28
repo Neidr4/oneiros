@@ -1,6 +1,7 @@
 [package]
 name = "control_minimal_test"
 version = "0.1.0"
+edition = "2021"
 authors = ["neidr4"]
 
 [dependencies]
