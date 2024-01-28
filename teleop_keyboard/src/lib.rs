@@ -34,7 +34,7 @@ pub fn usage() {
              A   D\n
              Z X C\n"
              );
-println!("Rotations are \n
+    println!("Rotations are \n
              J K"
              );
     println!(" ------------------------- ");
@@ -52,7 +52,6 @@ fn teleoperate() {
     });
 
     WKey.bind(move || {
-        println!("W key has been pressed");
         match COMMAND_WRAPPER.get() {
             Some(x) => x.direction.lock().unwrap().clone_from(&(PI/2.0)),
             None => println!("The wrapper is not initialized"),
@@ -188,5 +187,5 @@ pub fn get_user_input() -> [f32; 3] {
                              ],
         None => result = [0.0, 0.0, 0.0]
     }
-    return result
+    return result.clone()
 }

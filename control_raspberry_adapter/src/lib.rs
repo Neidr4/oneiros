@@ -23,8 +23,6 @@ struct RaspberryAdapter {
     motor_speeds: Arc<Mutex<[f32; 3]>>,
 }
 
-// TODO: Not sure the struct is needed now. Maybe we can add the array
-// directly inside the oncecell
 impl RaspberryAdapter {
     pub fn new() -> Self {
         Self {
@@ -49,9 +47,21 @@ pub fn start_sending_to_io() -> Result<(), Box<dyn Error>> {
 }
 
 // Consider getting this method outside and call to only one object
-pub fn update_speed_value(motor_pwms: [f32; 3]) {
+pub fn update_speed_value(mut motor_pwms: [f32; 3]) {
     // TODO: Make sure the threads are started before using this method
-    // TODO: Verify that the values are legal
+    for pwm in motor_pwms.iter_mut() {
+        if (*pwm).abs() > 1.0 {
+            println!("Saturating to 1.0.");
+            if pwm.is_sign_negative() {
+                *pwm = -1.0;
+            } else {
+                *pwm = 1.0;
+            }
+        }
+        if pwm.abs() < 0.05 {
+            *pwm = 0.0;
+        }
+    }
     match RASPBERRY_ADAPTER.get() {
         Some(x) => x.motor_speeds.lock().unwrap().clone_from(&motor_pwms),
         None => println!("Please start sending IOs first"),
@@ -97,31 +107,39 @@ fn run_dir() -> Result<(), Box<dyn Error>>  {
     Ok(())
 }
 
+fn apply_pwm(value: f32, pwm_channel: &Pwm) -> Result<(), Box<dyn Error>> {
+        // Setting the frequency
+        if value == 0.0 {
+            _ = pwm_channel.disable();
+        } else if !pwm_channel.is_enabled()? {
+            _ = pwm_channel.enable();
+        } else {
+            pwm_channel.set_frequency((value * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
+        }
+        return Ok(())
+}
+
 fn run_pwm() -> Result<(), Box<dyn Error>>  {
     // TODO: Make try again with with_frequency method to check pinout
     let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
     let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
     let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
     let mut speed_previous: [f32; 3] = [0.0; 3];
-    let _ = pwm_0.enable();
-    let _ = pwm_1.enable();
     let mut motor_speeds: [f32; 3] = [0.0; 3];
     loop{
         // Checking if anything has changed
         if EXIT_EVENT.load(Ordering::Relaxed) == true {break;}
         thread::sleep(Duration::from_millis(THREAD_SLEEP.into()));
         match RASPBERRY_ADAPTER.get() {
-            // Some(x) => println!("There something here"),
             Some(x) => x.motor_speeds.lock().unwrap().clone_into(&mut motor_speeds),
             None => {println!("Please start sending IOs first"); continue;}
         }
         if motor_speeds == speed_previous { continue; }
         speed_previous = motor_speeds.clone();
-        // Setting the frequency
-        pwm_0.set_frequency((motor_speeds[0] * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
-        pwm_1.set_frequency((motor_speeds[1] * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
+        _ = apply_pwm(motor_speeds[0], &pwm_0);
+        _ = apply_pwm(motor_speeds[1], &pwm_1);
         pwm_2.set_pwm_frequency((motor_speeds[2] * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
-        println!("motor_speeds pwm: {:?}", motor_speeds);
+        // println!("motor_speeds pwm: {:?}", motor_speeds);
     }
     println!("Disabling the PWMs");
     let _ = pwm_0.disable();

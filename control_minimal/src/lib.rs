@@ -52,7 +52,11 @@ fn check_overload(motors_speed: &mut [f32; 3]) {
             Some(speed) => {
                 if (*speed).abs() > 1.0 {
                     println!("Motor {}, has been assign speed \'{}\' greater than 1.0! Saturating to 1.0.", i, *speed);
-                    motors_speed[i] = 1.0;
+                    if speed.is_sign_negative() {
+                        motors_speed[i] = -1.0;
+                    } else {
+                        motors_speed[i] = 1.0;
+                    }
                 }
             },
             None => println!("Incorrect number of values registered in motors_speed. Expected \'3\', got \'{}\'", i),
