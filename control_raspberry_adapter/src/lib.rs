@@ -7,10 +7,12 @@ use std::sync::atomic::Ordering;
 use once_cell::sync::OnceCell;
 
 use rppal::gpio::{Gpio, OutputPin};
-use rppal::pwm::{Channel, Pwm};
+// use rppal::pwm::{Channel, Pwm};
 
-const PWM_FREQ_MIN: u32 = 41;
-const GPIO_PWM: u8 = 6;
+const PWM_FREQ_MIN: u32 = 4000;
+const GPIO_PWM_0: u8 = 12;
+const GPIO_PWM_1: u8 = 13;
+const GPIO_PWM_2: u8 = 6;
 const GPIO_DIR0: u8 = 17;
 const GPIO_DIR1: u8 = 27;
 const GPIO_DIR2: u8 = 22;
@@ -77,6 +79,9 @@ pub fn stop_sending_to_io() {
     thread::sleep(Duration::from_secs(1));
 }
 
+// if pwm_0.is_none() {
+//     println!("{:?}", pwm_0);
+// }
 fn run_dir() -> Result<(), Box<dyn Error>>  {
     let dir_0: OutputPin = Gpio::new()?.get(GPIO_DIR0)?.into_output();
     let dir_1: OutputPin = Gpio::new()?.get(GPIO_DIR1)?.into_output();
@@ -107,23 +112,27 @@ fn run_dir() -> Result<(), Box<dyn Error>>  {
     Ok(())
 }
 
-fn apply_pwm(value: f32, pwm_channel: &Pwm) -> Result<(), Box<dyn Error>> {
-        // Setting the frequency
-        if value == 0.0 {
-            _ = pwm_channel.disable();
-        } else if !pwm_channel.is_enabled()? {
-            _ = pwm_channel.enable();
-        } else {
-            pwm_channel.set_frequency((value * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
-        }
-        return Ok(())
-}
+// fn apply_pwm(value: f32, pwm_channel: &Pwm) -> Result<(), Box<dyn Error>> {
+//         // Setting the frequency
+//         if value == 0.0 {
+//             _ = pwm_channel.disable();
+//         } else if !pwm_channel.is_enabled()? {
+//             _ = pwm_channel.enable();
+//         } else {
+//             pwm_channel.set_frequency((value * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
+//         }
+//         return Ok(())
+// }
 
 fn run_pwm() -> Result<(), Box<dyn Error>>  {
     // TODO: Make try again with with_frequency method to check pinout
-    let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
-    let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
-    let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM)?.into_output();
+    // let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
+    // let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
+    // let pwm_0: Pwm = Pwm::new(Channel::Pwm0)?;
+    // let pwm_1: Pwm = Pwm::new(Channel::Pwm1)?;
+    let mut pwm_0: OutputPin = Gpio::new()?.get(GPIO_PWM_0)?.into_output();
+    let mut pwm_1: OutputPin = Gpio::new()?.get(GPIO_PWM_1)?.into_output();
+    let mut pwm_2: OutputPin = Gpio::new()?.get(GPIO_PWM_2)?.into_output();
     let mut speed_previous: [f32; 3] = [0.0; 3];
     let mut motor_speeds: [f32; 3] = [0.0; 3];
     loop{
@@ -136,14 +145,16 @@ fn run_pwm() -> Result<(), Box<dyn Error>>  {
         }
         if motor_speeds == speed_previous { continue; }
         speed_previous = motor_speeds.clone();
-        _ = apply_pwm(motor_speeds[0], &pwm_0);
-        _ = apply_pwm(motor_speeds[1], &pwm_1);
+        // _ = apply_pwm(motor_speeds[0], &pwm_0);
+        // _ = apply_pwm(motor_speeds[1], &pwm_1);
+        pwm_0.set_pwm_frequency((motor_speeds[0] * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
+        pwm_1.set_pwm_frequency((motor_speeds[1] * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
         pwm_2.set_pwm_frequency((motor_speeds[2] * PWM_FREQ_MIN as f32).abs().into(), 0.5)?;
         // println!("motor_speeds pwm: {:?}", motor_speeds);
     }
     println!("Disabling the PWMs");
-    let _ = pwm_0.disable();
-    let _ = pwm_1.disable();
+    let _ = pwm_0.clear_pwm();
+    let _ = pwm_1.clear_pwm();
     let _ = pwm_2.clear_pwm();
     Ok(())
 }
