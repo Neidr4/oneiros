@@ -1,4 +1,26 @@
 use std::f32::consts::PI;
+use std::sync::{Mutex, Arc};
+use std::time::Duration;
+use once_cell::sync::OnceCell;
+
+const ACCEL_RATE: f32 = 0.01;
+const DECEL_RATE: f32 = 0.01;
+const SAMPLE_TIME: f32 = 0.01;
+static CONTROLLER: OnceCell<Controller> = OnceCell::new();
+
+struct Controller {
+    motor_speeds: Arc<Mutex<[f32; 3]>>,
+    angles: [f32; 3],
+}
+
+impl Controller {
+    pub fn new() -> Self {
+        Self {
+            motor_speeds: Arc::new(Mutex::new([0.0; 3])),
+            angles: [(1.0*PI/3.0), PI, (-1.0*PI/3.0)],
+        }
+    }
+}
 
 struct Geometries {
     // The motor is 1.8deg per step. Which means full rotation is 200 steps.
@@ -64,6 +86,22 @@ fn check_overload(motors_speed: &mut [f32; 3]) {
     }
 }
 
+fn check_rate(motors_speed: &mut [f32; 3]) {
+    println!("check rate");
+    let mut old_speeds: [f32; 3];
+    match CONTROLLER.get() {
+        Some(x) => old_speeds = x.motor_speeds.lock().unwrap().clone(),
+        None => println!("Please start sending IOs first")
+    }
+    for (index, speed) in motors_speed.iter_mut().enumerate() {
+        let rate: f32 = (speed - old_speeds.get(index)?) / SAMPLE_TIME;
+    }
+    match CONTROLLER.get() {
+        Some(x) => x.motor_speeds.lock().unwrap().clone_into(&mut motors_speed.clone()),
+        None => println!("Please start sending IOs first")
+    }
+}
+
 pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3] {
     // Converts basic commands to motor ratios.
     // direction: f32; Direction of command relative to the robot in radians.
@@ -71,25 +109,13 @@ pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3]
     // angle_scalar: f32; Scale between 0 (minimal angular speed) to 1 (maximale angular speed).
     // returns an array of the three motor all scalled to one
     let mut motors_speed: [f32; 3] = [0.0; 3];
+    CONTROLLER.get_or_init(|| Controller::new());
     compute_angular(&mut motors_speed, angle_scalar);
     let adjusted_speed_scalar = compute_adjusted_scalar(&motors_speed, speed_scalar);
     compute_direction(&mut motors_speed, direction, adjusted_speed_scalar);
+    check_rate(&mut motors_speed);
     check_overload(&mut motors_speed);
     return [motors_speed[0], motors_speed[1] ,motors_speed[2]]
 }
 
 // TODO: Add a convert for twist method (vector3 linear, vector3 angular)
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
