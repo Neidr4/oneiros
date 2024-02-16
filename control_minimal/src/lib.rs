@@ -4,13 +4,13 @@ struct Geometries {
     // The motor is 1.8deg per step. Which means full rotation is 200 steps.
     // Let's say software of rasp PWM is 400Hz which converts to a pulse (step) every 2.5ms.
     // If you multiply that by 200, you get a full rotation in 500ms.
-    // NoW if your wheel is 120mm diameter, that means the circonference is 120*PI = 377mm
+    // Now if your wheel is 120mm diameter, that means the circonference is 120*PI = 377mm
     // Thus you get 754mm/sec == 0,754m/s == 2,71 km/h.
     // And that's assuming that assuming the torque will follow...
     angles: [f32; 3], // 60, 180, 300
 }
 
-// TODO: Implement a strategy to choose between linear, angular or mixed control.
+// TODO: Implement a strategy to choose between linear, angular or mixed control. Use ENUM here
 // static STRATEGY: u8 = 0;
 // static LINEAR: u8 = 1;
 // static ANGULAR: u8 = 2;
@@ -69,7 +69,7 @@ pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3]
     // direction: f32; Direction of command relative to the robot in radians.
     // speed_scalar: f32; Scale between 0 (minimal speed) to 1 (maximale speed).
     // angle_scalar: f32; Scale between 0 (minimal angular speed) to 1 (maximale angular speed).
-    // returns an array of the three motor all scalled to one
+    // Returns an array of the three motor all scalled to one
     let mut motors_speed: [f32; 3] = [0.0; 3];
     compute_angular(&mut motors_speed, angle_scalar);
     let adjusted_speed_scalar = compute_adjusted_scalar(&motors_speed, speed_scalar);
@@ -79,17 +79,3 @@ pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3]
 }
 
 // TODO: Add a convert for twist method (vector3 linear, vector3 angular)
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
