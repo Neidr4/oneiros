@@ -88,18 +88,29 @@ fn check_overload(motors_speed: &mut [f32; 3]) {
 
 fn check_rate(motors_speed: &mut [f32; 3]) {
     println!("check rate");
-    let mut old_speeds: [f32; 3];
+    let mut old_speeds: [f32; 3] = [0.0; 3];
     match CONTROLLER.get() {
-        Some(x) => old_speeds = x.motor_speeds.lock().unwrap().clone(),
+        // Some(x) => old_speeds.clone_from(&x.motor_speeds.lock().unwrap()),
+        Some(x) => {old_speeds.copy_from_slice(&x.motor_speeds.lock().unwrap().clone()); println!("old_speed: {:?}", old_speeds);},
         None => println!("Please start sending IOs first")
     }
     for (index, speed) in motors_speed.iter_mut().enumerate() {
-        let rate: f32 = (speed - old_speeds.get(index)?) / SAMPLE_TIME;
+        let rate: f32 = (*speed - old_speeds[index]) / SAMPLE_TIME;
+        let mut rate_max: f32 = 0.0;
+        if rate.is_sign_positive() {
+            rate_max = ACCEL_RATE;
+        } else {
+            rate_max = DECEL_RATE
+        }
+        if rate > rate_max.abs() {
+            *speed = SAMPLE_TIME * rate_max + old_speeds[index];
+        }
     }
     match CONTROLLER.get() {
-        Some(x) => x.motor_speeds.lock().unwrap().clone_into(&mut motors_speed.clone()),
+        Some(x) => {x.motor_speeds.lock().unwrap().clone_into(&mut motors_speed.clone()); println!("CONTROLLER : {:?}", motors_speed);},
         None => println!("Please start sending IOs first")
     }
+    println!("old_speed: {:?}", old_speeds);
 }
 
 pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3] {
@@ -114,7 +125,9 @@ pub fn convert(direction: f32, speed_scalar: f32, angle_scalar: f32) -> [f32; 3]
     let adjusted_speed_scalar = compute_adjusted_scalar(&motors_speed, speed_scalar);
     compute_direction(&mut motors_speed, direction, adjusted_speed_scalar);
     check_rate(&mut motors_speed);
+    println!("before: {:?}", motors_speed);
     check_overload(&mut motors_speed);
+    println!("after : {:?}", motors_speed);
     return [motors_speed[0], motors_speed[1] ,motors_speed[2]]
 }
 
