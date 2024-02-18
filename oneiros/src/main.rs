@@ -18,6 +18,7 @@ fn main() {
         user_input = teleop_keyboard::get_user_input();
         // println!("user_input: {:?}", user_input);
         control_output = control_minimal::convert(user_input[0], user_input[1],  user_input[2]);
+        control_output = control_rate_limiter::check_rate(&mut control_output);
         // println!("control_output: {:?}", control_output);
         control_raspberry_adapter::update_speed_value(control_output);
         sleep(Duration::from_millis(10));
