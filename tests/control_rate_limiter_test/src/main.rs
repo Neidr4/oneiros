@@ -1,20 +1,31 @@
-use std::{thread::sleep, time::Duration};
+use std::time::{Duration, Instant};
+use std::thread::sleep;
+
+const TEST_TIME: Duration = Duration::new(7, 0);
+const REFRESH_PERIOD: Duration = Duration::from_millis(10);
 
 fn main() {
     println!("Hello, world!");
 
+    let mut i : f32 = 0.0;
     let mut variable: [f32; 3] = [0.0; 3];
-    for i in 0..100 {
-        println!("------ i : {:?} --------", i);
-        let y: f32 = i as f32 * 0.01;
-        if i < 50 {
-            variable.fill(0.5);
-        } else if i > 50 && i < 100 {
-            variable.fill(0.5 - y);
+    let starting_time : Instant = Instant::now();
+    loop {
+        if starting_time.elapsed() > TEST_TIME {
+            break;
         }
+
+        println!("------ i : {:?} --------", i);
+        i += 0.01;
+        variable.fill(-0.5);
+        // if i < 0.5 {
+        //     variable.fill(0.5);
+        // } else if i > 0.5 && i < 1.0 {
+        //     variable.fill(0.5 - i);
+        // }
         println!("variable asked   is {:?}", variable);
         control_rate_limiter::check_rate(&mut variable);
         println!("variable after   is {:?}", variable);
-        sleep(Duration::from_millis(10));
+        sleep(REFRESH_PERIOD);
     }
 }
