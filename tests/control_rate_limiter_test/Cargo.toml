@@ -1,0 +1,8 @@
+[package]
+name = "control_rate_limiter_test"
+version = "0.1.0"
+edition = "2021"
+authors = ["neidr4"]
+
+[dependencies]
+control_rate_limiter = {path = "../../control_rate_limiter/"}
