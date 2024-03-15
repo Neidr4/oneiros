@@ -1,4 +1,6 @@
 use std::f32::consts::PI;
+use std::sync::{Mutex, Arc};
+use std::time::Duration;
 
 struct Geometries {
     // The motor is 1.8deg per step. Which means full rotation is 200 steps.
@@ -43,7 +45,6 @@ fn compute_adjusted_scalar(motors_speed: &[f32; 3], speed_scalar: f32) -> f32 {
     // let value: f32 = *motors_speed.into_iter().reduce(f32::max).unwrap();
     let remaining_power: f32 = 1.0 - (motors_speed.iter().copied().fold(f32::NAN, f32::max)).abs();
     return remaining_power * speed_scalar;
-
 }
 
 fn check_overload(motors_speed: &mut [f32; 3]) {

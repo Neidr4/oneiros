@@ -10,4 +10,5 @@ authors = ["neidr4"]
 ctrlc = "3.4.2"
 control_raspberry_adapter = {path = "../control_raspberry_adapter/"}
 control_minimal = {path = "../control_minimal/"}
+control_rate_limiter = {path = "../control_rate_limiter/"}
 teleop_keyboard = {path = "../teleop_keyboard/"}
