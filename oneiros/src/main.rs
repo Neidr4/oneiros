@@ -1,5 +1,7 @@
 use std::{process::exit, thread::sleep, time::Duration};
 
+const BASE_PERIOD: Duration = Duration::from_millis(10);
+
 
 fn main() {
     println!("Hello, world!");
@@ -12,8 +14,8 @@ fn main() {
         exit(1);
     }).expect("Error setting the Ctrl-C handler");
 
-    let mut user_input: [f32; 3] = [0.0; 3];
-    let mut control_output: [f32; 3] = [0.0; 3];
+    let mut user_input: [f32; 3];
+    let mut control_output: [f32; 3];
     loop {
         user_input = teleop_keyboard::get_user_input();
         // println!("user_input: {:?}", user_input);
@@ -21,6 +23,6 @@ fn main() {
         control_output = control_rate_limiter::check_rate(&mut control_output);
         // println!("control_output: {:?}", control_output);
         control_raspberry_adapter::update_speed_value(control_output);
-        sleep(Duration::from_millis(10));
+        sleep(BASE_PERIOD);
     }
 }
