@@ -24,6 +24,14 @@ pub fn check_rate(motors_speed: &mut [f32; 3]) -> [f32; 3] {
     let now: Instant = Instant::now();
     let obj = RATE_LIMITER.get_or_init(|| RateLimiter::new());
     let sample_time: Duration = now.duration_since(obj.time_previous.lock().unwrap().clone());
+    // Verifying the time is correct
+    if Duration::is_zero(&sample_time) {
+        println!("Rate limiter could not compute time properly. Returning 0.0 speed");
+        obj.time_previous.lock().unwrap().clone_from(&mut Instant::now());
+        obj.motors_speed_previous.lock().unwrap().clone_from(&[0.0; 3]);
+        return *motors_speed;
+    }
+    // Compute the rate and limit it for each motor
     for (index, speed) in motors_speed.iter_mut().enumerate() {
         let previous_speed: f32 = *obj.motors_speed_previous.lock().unwrap()
                                       .get(index).expect("Could not grab previous value");
@@ -34,10 +42,11 @@ pub fn check_rate(motors_speed: &mut [f32; 3]) -> [f32; 3] {
         } else {
             rate_max = DECEL_RATE;
         }
-        if rate > rate_max.abs() {
+        if rate.abs() > rate_max.abs() {
             *speed = sample_time.as_secs_f32() * rate_max + previous_speed;
         }
     }
+    // Saves the info for the next iteration
     obj.motors_speed_previous.lock().unwrap().clone_from(motors_speed);
     obj.time_previous.lock().unwrap().clone_from(&mut Instant::now());
     *motors_speed
