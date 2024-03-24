@@ -1,0 +1,11 @@
+[package]
+name = "teleop_gamepad_test"
+version = "0.1.0"
+edition = "2021"
+authors = ["Neidr4"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# gilrs = "0.10.6"
+teleop_gamepad = {path = "../../teleop_gamepad/"}
