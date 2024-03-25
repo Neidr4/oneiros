@@ -25,31 +25,7 @@ impl Command {
     }
 }
 
-
-// let mut gilrs = Gilrs::new().unwrap();
-// 
-// // Iterate over all connected gamepads
-// for (_id, gamepad) in gilrs.gamepads() {
-//         println!("{} is {:?}", gamepad.name(), gamepad.power_info());
-// }
-// 
-// let mut active_gamepad = None;
-// 
-// loop {
-//     // Examine new events
-//     while let Some(Event { id, event, time }) = gilrs.next_event() {
-//                 println!("{:?} New event from {}: {:?}", time, id, event);
-//                         active_gamepad = Some(id);
-//                             }
-// 
-//     // You can also use cached gamepad state
-//     if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
-//         if gamepad.is_pressed(Button::South) {
-//             println!("Button South is pressed (XBox - A, PS - X)");
-//         }
-//     }
-// }
-//
+// TODO: Add usage
 
 fn teleoperate() {
 
@@ -61,7 +37,12 @@ fn teleoperate() {
     }
 
     let mut active_gamepad = None;
-    let mut leftZ_counter: u64 = 0;
+    let mut left_z_value: f32 = 0.0;
+    let mut left_z_counter: u64 = 0;
+    let mut left_axis_x: f32 = 0.0;
+    let mut left_axis_y: f32 = 0.0;
+    let mut angle_scalar: f32 = 0.0;
+    let mut speed_scalar: f32 = 0.0;
 
     loop {
         while let Some(Event { id, event, time }) = gilrs.next_event() {
@@ -70,54 +51,58 @@ fn teleoperate() {
         }
 
         if let Some(gamepad) = active_gamepad.map(|id| gilrs.gamepad(id)) {
-            if gamepad.is_pressed(Button::South) {
-                match COMMAND_WRAPPER.get() {
-                    Some(x) => x.direction.lock().unwrap().clone_from(&(3.0*PI/4.0)),
-                    None => println!("The wrapper is not initialized"),
-                }
+
+            match gamepad.axis_data(Axis::LeftZ) {
+                Some(x) => {
+                    if left_z_counter != x.counter() {continue;}
+                    left_z_value = x.value().clone();
+                    left_z_counter = x.counter();
+                },
+                None => println!("The gamepad is not compatible or not properly initialized Z"),
             }
 
             // TODO: try gamepad.button_data and is_repeating
             if gamepad.is_pressed(Button::North) {
-                match COMMAND_WRAPPER.get() {
-                    Some(x) => x.speed_scalar.lock().unwrap().add_assign(1e-5),
-                    None => println!("The wrapper is not initialized"),
-                }
+                angle_scalar.add_assign(1e-5);
             }
 
             if gamepad.is_pressed(Button::East) {
-                match COMMAND_WRAPPER.get() {
-                    Some(x) => x.speed_scalar.lock().unwrap().add_assign(-1e-5),
-                    None => println!("The wrapper is not initialized"),
-                }
+                angle_scalar.add_assign(-1e-5);
             }
 
-            // match gamepad.axis_data(Axis::DPadX) {
-            //     Some(x) => {
-            //         if x.counter() != leftZ_counter {
-            //             leftZ_counter = x.counter();
-            //             COMMAND_WRAPPER.get().expect("oops").direction.lock().unwrap().clone_from(&x.value());
-            //         }
-            //     },
-            //     None => println!("The gamepad is not compatible or not properly initialized"),
-            // }
+            if gamepad.is_pressed(Button::West) {
+                speed_scalar.add_assign(1e-5);
+            }
 
-            // match gamepad.axis_data(Axis::LeftZ) {
-            //     Some(x) => {
-            //         if x.counter() != leftZ_counter {
-            //             leftZ_counter = x.counter();
-            //             COMMAND_WRAPPER.get().expect("oops").direction.lock().unwrap().clone_from(&x.value());
-            //         }
-            //     },
-            //     None => println!("The gamepad is not compatible or not properly initialized"),
-            // }
+            if gamepad.is_pressed(Button::South) {
+                speed_scalar.add_assign(-1e-5);
+            }
 
-            // if gamepad.value(Axis::LeftZ) {
-            //     match COMMAND_WRAPPER.get() {
-            //         Some(x) => x.direction.lock().unwrap().clone_from(&(3.0*PI/4.0)),
-            //         None => println!("The wrapper is not initialized"),
-            //     }
-            // }
+
+            match gamepad.axis_data(Axis::LeftStickX) {
+                Some(x) => { left_axis_x = x.value().clone() },
+                None => println!("The gamepad is not compatible or not properly initialized X"),
+            }
+
+            match gamepad.axis_data(Axis::LeftStickY) {
+                Some(x) => { left_axis_y = x.value().clone() },
+                None => println!("The gamepad is not compatible or not properly initialized Y"),
+            }
+            
+            if left_z_value != 1.0 {
+                speed_scalar = 0.0;
+                angle_scalar = 0.0;
+            }
+
+            match COMMAND_WRAPPER.get() {
+                Some(x) => {
+                    x.speed_scalar.lock().unwrap().clone_from(&speed_scalar);
+                    x.angle_scalar.lock().unwrap().clone_from(&angle_scalar);
+                },
+                None => println!("The wrapper is not initialized"),
+            }
+            let direction: f32 = left_axis_x.atan2(-left_axis_y);
+            COMMAND_WRAPPER.get().expect("oops").direction.lock().unwrap().clone_from(&direction);
         }
     }
 }

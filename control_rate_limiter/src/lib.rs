@@ -2,8 +2,8 @@ use once_cell::sync::OnceCell;
 use std::sync::{Mutex, Arc};
 use std::time::{Duration, Instant};
 
-const ACCEL_RATE: f32 = 0.1;
-const DECEL_RATE: f32 = -0.1;
+const ACCEL_RATE: f32 = 0.5;
+const DECEL_RATE: f32 = -0.5;
 static RATE_LIMITER: OnceCell<RateLimiter> = OnceCell::new();
 
 struct RateLimiter {

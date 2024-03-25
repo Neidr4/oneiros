@@ -7,7 +7,8 @@ fn user_control() {
     let mut user_input: [f32; 3];
     let mut control_output: [f32; 3];
     loop {
-        user_input = teleop_keyboard::get_user_input();
+        // user_input = teleop_keyboard::get_user_input();
+        user_input = teleop_gamepad::get_user_input();
         // println!("user_input: {:?}", user_input);
         control_output = control_minimal::convert(user_input[0], user_input[1],  user_input[2]);
         control_output = control_rate_limiter::check_rate(&mut control_output);
@@ -36,7 +37,8 @@ fn shape() {
 fn main() {
     println!("Hello, world!");
 
-    teleop_keyboard::start_teleoperation();
+    // teleop_keyboard::start_teleoperation();
+    teleop_gamepad::start_teleoperation();
     let _ = control_raspberry_adapter::start_sending_to_io();
 
     ctrlc::set_handler(move || {

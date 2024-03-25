@@ -6,7 +6,7 @@ fn main() {
 
     teleop_gamepad::start_teleoperation();
 
-    for _i in 0..100 {
+    for _i in 0..500 {
 
         println!("Still listening for stuff here {:?} over {:?}", _i, 100);
         // Fetch the data
